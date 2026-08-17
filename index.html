@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#5b3b91">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.json">
+<title>PACIFIC-ALU — Pointage</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;min-height:100%}
+body{font-family:Arial,Helvetica,sans-serif;background:#eef2f7;color:#172033}
+.container{width:100%;max-width:1900px;margin:auto;padding:18px}
+h1{margin:0 0 14px;color:#5b3b91;font-size:29px}
+.nav{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.nav button{border:1px solid #d8cbea;background:white;color:#5b3b91;padding:10px 15px;border-radius:7px;font-weight:bold;cursor:pointer}
+.nav button.active{background:#5b3b91;color:white}
+.status{display:inline-block;padding:7px 13px;border-radius:20px;background:#fef3c7;color:#92400e;font-size:12px;margin-bottom:12px}
+.status.ok{background:#dcfce7;color:#166534}
+.status.error{background:#fee2e2;color:#991b1b}
+.message{display:none;padding:10px;margin-bottom:10px;border-radius:7px;font-size:13px}
+.message.show{display:block}
+.card{background:white;border-radius:10px;padding:15px;margin-bottom:12px;box-shadow:0 2px 8px #00000014}
+.date-title{text-align:center;color:#5b3b91;font-size:22px;font-weight:bold;margin-bottom:12px}
+.datebar{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap}
+.datebar input{padding:9px;border:1px solid #cbd5e1;border-radius:6px}
+.btn{border:0;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:bold;cursor:pointer}
+.btn:hover{opacity:.85}.purple{background:#5b3b91;color:white}.green{background:#166534;color:white}.red{background:#dc2626;color:white}.gray{background:#64748b;color:white}.orange{background:#c2410c;color:white}
+.conducteur,.chantier,.equipe,.poseur,.non-affectes{background:white;border-radius:10px;margin-bottom:10px;box-shadow:0 2px 8px #00000014;overflow:hidden}
+.conducteur-header,.chantier-header,.equipe-header{min-height:60px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.conducteur-main,.chantier-main,.equipe-main{display:flex;align-items:center;gap:9px;cursor:pointer;flex:1}
+.conducteur-title{font-size:19px;font-weight:bold;color:#334155}.chantier-title,.equipe-title{color:#5b3b91;font-size:17px;font-weight:bold}
+.arrow{width:20px;flex-shrink:0;color:#5b3b91;font-weight:bold}
+.conducteur-actions,.chantier-actions,.equipe-actions{display:flex;gap:6px;flex-wrap:wrap}
+.conducteur-content{display:none;padding:12px 17px 18px 45px;border-top:1px solid #e2e8f0}
+.conducteur.open .conducteur-content,.chantier.open .chantier-content,.equipe.open .equipe-content,.non-affectes.open .non-content,.poseur.open .poseur-pointage{display:block}
+.chantier{background:#f8fafc;border-left:5px solid #5b3b91;border-radius:8px}
+.chantier-content{display:none;padding:5px 14px 14px 34px}
+.equipe{border:1px solid #d8cbea;border-radius:8px}
+.equipe-content{display:none;padding:7px 12px 14px 30px;border-top:1px solid #eee8f8}
+.equipe-function,.poseur-function{color:#64748b;font-size:11px;margin-top:3px}
+.poseur{background:#f8fafc;border:1px solid #dce3eb;border-radius:8px}
+.poseur.open{background:white;border-color:#b9a5e6}
+.poseur-header{min-height:57px;padding:11px 13px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.poseur-header:hover{background:#f1f5f9}
+.poseur-name{font-size:15px;font-weight:bold;color:#334155}
+.poseur-pointage{display:none;padding:0 12px 12px 30px;border-top:1px solid #e2e8f0}
+.pointage{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:9px;width:100%;margin-top:10px}
+.pointage-box{background:white;border:1px solid #dce3eb;border-radius:6px;padding:8px}
+.pointage-label{font-size:10px;color:#64748b;font-weight:bold;margin-bottom:5px}
+.select,.field,.history-select,.search{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:5px;font-size:12px;background:white}
+.time-inputs{display:grid;grid-template-columns:1fr 1fr;gap:5px}.time-inputs select{width:100%;padding:7px;border:1px solid #cbd5e1;border-radius:5px;background:white}
+.time-unit{font-size:9px;color:#64748b;margin-top:2px}
+.total-box{min-height:34px;display:flex;justify-content:center;align-items:center;background:#ede9fe;color:#4c1d95;border-radius:5px;font-weight:bold}
+.non-affectes{border:1px dashed #94a3b8;margin-top:8px}.non-header{min-height:50px;padding:11px;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:bold;color:#64748b}.non-content{display:none;padding:7px 12px 12px 30px}
+.history-summary{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin:15px 0}
+.summary-box{border-radius:8px;padding:13px;text-align:center}.summary-label{font-size:10px;font-weight:bold;margin-bottom:6px}.summary-value{font-size:22px;font-weight:bold}
+.summary-normal{background:#f8fafc}.summary-retard{background:#fff7ed;color:#c2410c}.summary-sup{background:#f0fdf4;color:#15803d}.summary-total{background:#ede9fe;color:#4c1d95}
+.scroll{overflow-x:auto}table{width:100%;min-width:1100px;border-collapse:collapse;font-size:11px}th{background:#5b3b91;color:white;padding:8px;text-align:left}td{padding:8px;border-bottom:1px solid #e2e8f0}
+.poseur-list-page{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-top:15px}
+.poseur-admin{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:1px solid #dce3eb;border-radius:8px;background:#f8fafc}
+.poseur-admin-name{font-weight:bold}.person-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #d8cbea;background:#ede9fe;flex-shrink:0}
+.person-photo-placeholder{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ede9fe;color:#5b3b91;font-size:23px;border:2px solid #d8cbea;flex-shrink:0}
+.person-admin-left{display:flex;align-items:center;gap:10px;min-width:0}.person-admin-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.poseur-admin small{display:block;color:#64748b;margin-top:3px}
+.modal-bg{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}.modal-bg.open{display:flex}
+.modal{width:700px;max-width:100%;max-height:90vh;overflow:auto;background:white;border-radius:10px;padding:20px}.modal-title{color:#5b3b91;font-size:21px;font-weight:bold;margin-bottom:14px}
+.person{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #e2e8f0;font-size:13px}.person input{width:18px;height:18px}.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+@media(max-width:1200px){.pointage{grid-template-columns:repeat(3,minmax(140px,1fr))}.history-summary{grid-template-columns:repeat(2,minmax(150px,1fr))}}
+@media(max-width:800px){.container{padding:10px}.pointage{grid-template-columns:repeat(2,minmax(130px,1fr))}.conducteur-content,.chantier-content,.equipe-content{padding-left:15px}}
+@media(max-width:500px){.pointage,.history-summary{grid-template-columns:1fr}.conducteur-header,.chantier-header,.equipe-header{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>👷 PACIFIC-ALU — Pointage des poseurs</h1>
+
+<div class="nav">
+<button id="navPointage" class="active">📋 Pointage</button>
+<button id="navPoseur">📊 Historique</button>
+<button id="navChantier">🏗️ Chantiers</button>
+<button id="navListePoseurs">👷 Poseurs</button>
+<button id="navListeConducteurs">🚚 Conducteurs</button>
+</div>
+
+<div id="firebaseStatus" class="status">⚡ Initialisation...</div>
+<div id="message" class="message"></div>
+
+<section id="pagePointage">
+<div class="card">
+<div id="dateTitle" class="date-title"></div>
+<div class="datebar">
+<button id="prev" class="btn gray">◀</button>
+<input id="dateInput" type="date">
+<button id="today" class="btn gray">Aujourd'hui</button>
+<button id="next" class="btn gray">▶</button>
+<button id="copyPrevious" class="btn orange">📋 Copier le jour précédent</button>
+</div>
+</div>
+<div id="conducteurs"></div>
+</section>
+
+<section id="pagePoseur" style="display:none">
+<div class="card">
+<h2>📊 Historique de pointage</h2>
+<select id="poseurSelect" class="history-select"><option value="">-- Sélectionner un poseur --</option></select>
+<button id="exportPoseur" class="btn green">📥 Télécharger Excel</button>
+<div id="poseurHistory"></div>
+</div>
+</section>
+
+<section id="pageChantier" style="display:none">
+<div class="card">
+<h2>🏗️ Historique des chantiers</h2>
+<select id="chantierSelect" class="history-select"><option value="">-- Sélectionner un chantier --</option></select>
+<button id="exportChantier" class="btn green">📥 Télécharger Excel</button>
+<button id="exportAll" class="btn green">📥 Tout télécharger</button>
+<div id="chantierHistory"></div>
+</div>
+</section>
+
+<section id="pageListePoseurs" style="display:none">
+<div class="card">
+<h2>👷 Liste générale des poseurs</h2>
+<p style="color:#64748b;font-size:13px">La désactivation d'un poseur ne supprime jamais son historique.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input id="newPoseurNom" class="field" placeholder="NOM" style="max-width:220px">
+<input id="newPoseurPrenom" class="field" placeholder="Prénom" style="max-width:220px">
+<button id="addGlobalPoseur" class="btn purple">＋ Ajouter le poseur</button>
+</div>
+<div id="globalPoseurList" class="poseur-list-page"></div>
+</div>
+</section>
+
+<section id="pageListeConducteurs" style="display:none">
+<div class="card">
+<h2>🚚 Liste générale des conducteurs</h2>
+<p style="color:#64748b;font-size:13px">La désactivation d'un conducteur ne supprime jamais son historique.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input id="newConducteurNom" class="field" placeholder="NOM" style="max-width:220px">
+<input id="newConducteurPrenom" class="field" placeholder="Prénom" style="max-width:220px">
+<button id="addGlobalConducteur" class="btn purple">＋ Ajouter le conducteur</button>
+</div>
+<div id="globalConducteurList" class="poseur-list-page"></div>
+</div>
+</section>
+</div>
+
+<input id="poseurPhotoInput" type="file" accept="image/*" style="display:none">
+<input id="conducteurPhotoInput" type="file" accept="image/*" style="display:none">
+
+<div id="poseurModal" class="modal-bg">
+<div class="modal">
+<div class="modal-title">👥 Poseurs du chantier</div>
+<input id="poseurSearch" class="search" placeholder="🔎 Rechercher...">
+<div id="poseurList"></div>
+<div class="modal-footer"><button id="cancelPoseurs" class="btn gray">Annuler</button><button id="savePoseurs" class="btn purple">✓ Enregistrer</button></div>
+</div>
+</div>
+
+<div id="teamModal" class="modal-bg">
+<div class="modal">
+<div class="modal-title">👥 Créer une équipe</div>
+<label>Nom de l'équipe</label>
+<input id="teamName" class="field" value="Équipe 1" style="margin:6px 0 12px">
+<label>Fonction commune</label>
+<input id="teamFunction" class="field" placeholder="Ex : Pose des châssis fixes" style="margin:6px 0 12px">
+<div style="font-weight:bold;margin-bottom:8px">Sélectionner les poseurs :</div>
+<div id="teamPoseurs"></div>
+<div class="modal-footer"><button id="cancelTeam" class="btn gray">Annuler</button><button id="saveTeam" class="btn purple">✓ Enregistrer</button></div>
+</div>
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import {getAuth,signInAnonymously,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import {initializeFirestore,persistentLocalCache,persistentMultipleTabManager,doc,getDoc,setDoc,getDocs,collection,serverTimestamp}
+from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyC7R0WS5-FYJyVXy4xGnsUt6Icrx_kA3OM",
+authDomain:"pacific-alu.firebaseapp.com",
+projectId:"pacific-alu",
+storageBucket:"pacific-alu.firebasestorage.app",
+messagingSenderId:"158592811837",
+appId:"1:158592811837:web:ac713ec347293b2e5d3b54",
+measurementId:"G-J4G9V9Z98Y"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=initializeFirestore(app,{
+localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})
+});
+
+let dateSel=new Date().toISOString().slice(0,10);
+let data=null,firebaseReady=false,globalPoseurs=[],globalConducteurs=[];
+let conducteurOuvert=new Set(),chantierOuvert=new Set(),equipeOuverte=new Set(),poseurOuvert=new Set(),nonAffectesOuvert=new Set();
+let conducteurActif=null,chantierActif=null,equipeTemp=[],tempPoseurs=[],historique=[];
+
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+function dateFR(d){const [y,m,dd]=d.split("-").map(Number);return new Date(y,m-1,dd).toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}
+function changeDate(d,a){const [y,m,dd]=d.split("-").map(Number),x=new Date(y,m-1,dd);x.setDate(x.getDate()+a);return x.toISOString().slice(0,10)}
+function heuresNormales(d){const [y,m,dd]=d.split("-").map(Number),j=new Date(y,m-1,dd).getDay();return j>=1&&j<=4?480:j===5?420:0}
+function minutesTemps(h,m){return (Number(h)||0)*60+(Number(m)||0)}
+function formatMinutes(t){t=Math.max(0,Number(t)||0);const h=Math.floor(t/60),m=t%60;return m===0?`${h} h`:`${h} h ${m} min`}
+function calculPoseur(p,d){if(p.statut==="Absent")return{normales:0,retard:0,sup:0,total:0};const normales=heuresNormales(d),retard=minutesTemps(p.retardHeures,p.retardMinutes),sup=minutesTemps(p.supHeures,p.supMinutes);return{normales,retard,sup,total:Math.max(0,normales-retard+sup)}}
+
+function structureDefaut(){return{date:dateSel,conducteurs:[1,2,3,4,5].map(i=>({id:"c"+i,nom:"Conducteur "+i,chantiers:[]}))}}
+function normaliser(v){
+v=v||structureDefaut();v.conducteurs??=[];
+while(v.conducteurs.length<5){const n=v.conducteurs.length+1;v.conducteurs.push({id:"c"+n,nom:"Conducteur "+n,chantiers:[]})}
+v.conducteurs=v.conducteurs.slice(0,5);
+v.conducteurs.forEach(c=>{c.chantiers??=[];c.chantiers.forEach(ch=>{ch.poseurs??=[];ch.equipes??=[];ch.poseurs.forEach(p=>{p.key??=`${p.nom}|${p.prenom}`;p.nom??=p.key.split("|")[0];p.prenom??=p.key.split("|")[1]||"";p.fonction??="";p.statut??="Présent";p.retardHeures??=0;p.retardMinutes??=0;p.supHeures??=0;p.supMinutes??=0});ch.equipes.forEach(e=>{e.poseurs??=[];e.nom??="Équipe";e.fonction??=""})})});
+return v;
+}
+
+const poseursParDefaut=[
+["TETOE","TIRI"],["TUANIA","HITI"],["MO TAM PO","JASON"],["REREAO","TUTAHITI"],["TEGARIPA","JACKY"],["DROLLET","RAINUI"],["MATEAU","TAAROA"],["AUNOA","CHARLES"],["FIU","RIHI"],["FIU","Edmond"],["TAHA","Julien"],["LEE","Manutea"],["KOMOE","ERNEST"],["MATAOA","KAHAUTIA"],["RAUMEARII","TAUIRA"],["MOORIA","MANUIAVA"],["RUA","TAGIHIA"],["TUPEA","Temauri"],["MOU","Lucien"],["TUHOE","Maui"],["TAHA","Tumai/AUDERI"],["TERE","WILFRED"],["MARUHI","WILLY"],["TUAHINE","PAUL"],["TUAHINE","RAIMANA"],["LAI","DENIS"],["TUAHU","DAVID"],["TEANINIURAITEMOANA","JONAS"],["TAHARIA","EMILE"],["HARRY'S","CHARLES"]];
+const conducteursParDefaut=[["Conducteur 1",""],["Conducteur 2",""],["Conducteur 3",""],["Conducteur 4",""],["Conducteur 5",""]];
+
+const globalPoseursRef=()=>doc(db,"configuration","poseurs");
+const globalConducteursRef=()=>doc(db,"configuration","conducteurs");
+const refJour=()=>doc(db,"pointages",dateSel);
+
+async function chargerPoseursGeneraux(){
+try{const s=await getDoc(globalPoseursRef());if(s.exists())globalPoseurs=(s.data().poseurs||[]).map(p=>({...p,photo:p.photo||"",actif:p.actif!==false}));else{globalPoseurs=poseursParDefaut.map(p=>({nom:p[0],prenom:p[1],photo:"",actif:true}));await sauvegarderPoseursGeneraux()}afficherPoseursGeneraux()}catch(e){console.error(e);if(!globalPoseurs.length)globalPoseurs=poseursParDefaut.map(p=>({nom:p[0],prenom:p[1],photo:"",actif:true}));afficherPoseursGeneraux()}}
+async function sauvegarderPoseursGeneraux(){if(!firebaseReady)return;await setDoc(globalPoseursRef(),{poseurs:globalPoseurs,updatedAt:serverTimestamp()})}
+async function chargerConducteursGeneraux(){
+try{const s=await getDoc(globalConducteursRef());if(s.exists())globalConducteurs=(s.data().conducteurs||[]).map(c=>({...c,photo:c.photo||"",actif:c.actif!==false}));else{globalConducteurs=conducteursParDefaut.map((c,i)=>({id:"c"+(i+1),nom:c[0],prenom:c[1],photo:"",actif:true}));await sauvegarderConducteursGeneraux()}afficherConducteursGeneraux()}catch(e){console.error(e);if(!globalConducteurs.length)globalConducteurs=conducteursParDefaut.map((c,i)=>({id:"c"+(i+1),nom:c[0],prenom:c[1],photo:"",actif:true}));afficherConducteursGeneraux()}}
+async function sauvegarderConducteursGeneraux(){if(!firebaseReady)return;await setDoc(globalConducteursRef(),{conducteurs:globalConducteurs,updatedAt:serverTimestamp()})}
+
+function imageToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=220;let w=img.width,h=img.height;if(w>h&&w>max){h=Math.round(h*max/w);w=max}else if(h>=w&&h>max){w=Math.round(w*max/h);h=max}const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/jpeg",.68))};img.onerror=reject;img.src=r.result};r.onerror=reject;r.readAsDataURL(file)})}
+
+function chargerLocal(){try{const r=localStorage.getItem("pointage_"+dateSel);return r?normaliser(JSON.parse(r)):null}catch(e){return null}}
+function sauvegarderLocal(){try{localStorage.setItem("pointage_"+dateSel,JSON.stringify(data))}catch(e){console.warn(e)}}
+async function sauvegarderFirebase(){if(!firebaseReady||!navigator.onLine)return;try{await setDoc(refJour(),{...data,date:dateSel,updatedAt:serverTimestamp()})}catch(e){console.error(e)}}
+async function sauvegarder(){sauvegarderLocal();await sauvegarderFirebase()}
+async function chargerFirebase(){try{const s=await getDoc(refJour());if(s.exists()){data=normaliser(s.data());sauvegarderLocal();render()}else await sauvegarderFirebase()}catch(e){console.warn("Firebase indisponible, mode local.",e)}}
+
+function updateStatus(){
+const s=$("firebaseStatus");
+if(!navigator.onLine){s.textContent="🟠 Hors connexion — données enregistrées";s.className="status";return}
+if(firebaseReady){s.textContent="🟢 En ligne — synchronisé";s.className="status ok"}else{s.textContent="🟡 Connexion Firebase...";s.className="status"}
+}
+window.addEventListener("online",async()=>{updateStatus();if(firebaseReady){await sauvegarderFirebase();afficherMessage("✓ Connexion rétablie. Synchronisation effectuée.")}})
+window.addEventListener("offline",()=>{updateStatus();afficherMessage("🟠 Hors connexion. Les données restent enregistrées sur cet appareil.")})
+
+onAuthStateChanged(auth,async user=>{
+if(!user)return;
+firebaseReady=true;updateStatus();
+await chargerPoseursGeneraux();await chargerConducteursGeneraux();await chargerFirebase();updateStatus()
+});
+signInAnonymously(auth).catch(e=>{console.warn("Auth hors ligne ou indisponible",e);updateStatus()});
+
+data=chargerLocal()||structureDefaut();$("dateInput").value=dateSel;render();updateStatus();
+
+function afficherMessage(t,erreur=false){const e=$("message");e.textContent=t;e.className="message show";e.style.background=erreur?"#fee2e2":"#dcfce7";e.style.color=erreur?"#991b1b":"#166534";setTimeout(()=>e.className="message",3000)}
+
+function render(){
+$("dateTitle").textContent="Pointage du "+dateFR(dateSel);$("dateInput").value=dateSel;const c=$("conducteurs");c.innerHTML="";
+data.conducteurs.forEach((conducteur,ci)=>{const open=conducteurOuvert.has(ci),d=document.createElement("div");d.className="conducteur"+(open?" open":"");d.innerHTML=`<div class="conducteur-header"><div class="conducteur-main" data-action="conducteur" data-ci="${ci}"><span class="arrow">${open?"▼":"▶"}</span><span class="conducteur-title">👷 ${esc(conducteur.nom)}</span></div><div class="conducteur-actions"><button class="btn purple" data-action="edit-conducteur" data-ci="${ci}">✏️ Modifier</button></div></div><div class="conducteur-content"><div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn purple" data-action="add-chantier" data-ci="${ci}">＋ Ajouter un chantier</button></div><div class="chantiers-container"></div></div>`;
+const cc=d.querySelector(".chantiers-container");if(!conducteur.chantiers.length)cc.innerHTML=`<div style="padding:12px;color:#64748b">Aucun chantier.</div>`;conducteur.chantiers.forEach((ch,chi)=>afficherChantier(cc,ci,chi,ch));c.appendChild(d)})
+}
+
+function afficherChantier(parent,ci,chi,ch){
+const key=`${ci}-${chi}`,open=chantierOuvert.has(key),d=document.createElement("div");d.className="chantier"+(open?" open":"");
+d.innerHTML=`<div class="chantier-header"><div class="chantier-main" data-action="chantier" data-ci="${ci}" data-chi="${chi}"><span class="arrow">${open?"▼":"▶"}</span><span class="chantier-title">🏗️ ${esc(ch.nom)}</span></div><div class="chantier-actions"><button class="btn purple" data-action="manage-poseurs" data-ci="${ci}" data-chi="${chi}">👥 Poseurs</button><button class="btn purple" data-action="add-team" data-ci="${ci}" data-chi="${chi}">＋ Équipe</button><button class="btn purple" data-action="edit-chantier" data-ci="${ci}" data-chi="${chi}">✏️</button><button class="btn red" data-action="delete-chantier" data-ci="${ci}" data-chi="${chi}">×</button></div></div><div class="chantier-content"></div>`;
+const content=d.querySelector(".chantier-content");if(open)afficherContenuChantier(content,ci,chi,ch);parent.appendChild(d)
+}
+function afficherContenuChantier(parent,ci,chi,ch){
+ch.equipes.forEach((e,ei)=>{const key=`${ci}-${chi}-${ei}`,open=equipeOuverte.has(key),d=document.createElement("div");d.className="equipe"+(open?" open":"");d.innerHTML=`<div class="equipe-header"><div class="equipe-main" data-action="equipe" data-ci="${ci}" data-chi="${chi}" data-ei="${ei}"><span class="arrow">${open?"▼":"▶"}</span><div><div class="equipe-title">👥 ${esc(e.nom)}</div><div class="equipe-function">Fonction : ${esc(e.fonction)}</div></div></div><div class="equipe-actions"><button class="btn purple" data-action="edit-team" data-ci="${ci}" data-chi="${chi}" data-ei="${ei}">✏️</button><button class="btn red" data-action="delete-team" data-ci="${ci}" data-chi="${chi}" data-ei="${ei}">×</button></div></div><div class="equipe-content"></div>`;const ec=d.querySelector(".equipe-content");if(open)e.poseurs.forEach(k=>{const p=ch.poseurs.find(x=>x.key===k);if(p)afficherPoseur(ec,ci,chi,p)});parent.appendChild(d)});
+const affectes=new Set(ch.equipes.flatMap(e=>e.poseurs)),disponibles=ch.poseurs.filter(p=>!affectes.has(p.key));if(disponibles.length){const key=`${ci}-${chi}`,open=nonAffectesOuvert.has(key),d=document.createElement("div");d.className="non-affectes"+(open?" open":"");d.innerHTML=`<div class="non-header" data-action="non-affectes" data-ci="${ci}" data-chi="${chi}"><span class="arrow">${open?"▼":"▶"}</span>👤 Poseurs non affectés (${disponibles.length})</div><div class="non-content"></div>`;const nc=d.querySelector(".non-content");if(open)disponibles.forEach(p=>afficherPoseur(nc,ci,chi,p));parent.appendChild(d)}
+}
+function afficherPoseur(parent,ci,chi,p){
+const key=`${ci}-${chi}-${p.key}`,open=poseurOuvert.has(key),calc=calculPoseur(p,dateSel),d=document.createElement("div");d.className="poseur"+(open?" open":"");
+const h=document.createElement("div");h.className="poseur-header";h.innerHTML=`<span class="arrow">${open?"▼":"▶"}</span><div><div class="poseur-name">👤 ${esc(p.nom)} ${esc(p.prenom)}</div>${p.fonction?`<div class="poseur-function">${esc(p.fonction)}</div>`:""}</div>`;h.onclick=e=>{e.stopPropagation();open?poseurOuvert.delete(key):poseurOuvert.add(key);render()};d.appendChild(h);
+if(open){const box=document.createElement("div");box.className="poseur-pointage";box.innerHTML=`<div class="pointage">
+<div class="pointage-box"><div class="pointage-label">PRÉSENCE</div><select class="select" data-action="statut" data-ci="${ci}" data-chi="${chi}" data-key="${esc(p.key)}"><option ${p.statut==="Présent"?"selected":""}>Présent</option><option ${p.statut==="Absent"?"selected":""}>Absent</option></select></div>
+<div class="pointage-box"><div class="pointage-label">HEURES NORMALES</div><div class="total-box">${formatMinutes(calc.normales)}</div></div>
+<div class="pointage-box"><div class="pointage-label">RETARD</div><div class="time-inputs">${selectHeures(p.retardHeures,"retard",ci,chi,p.key)}${selectMinutes(p.retardMinutes,"retard",ci,chi,p.key)}</div></div>
+<div class="pointage-box"><div class="pointage-label">HEURE(S) SUPPLÉMENTAIRE(S)</div><div class="time-inputs">${selectHeures(p.supHeures,"sup",ci,chi,p.key)}${selectMinutes(p.supMinutes,"sup",ci,chi,p.key)}</div></div>
+<div class="pointage-box"><div class="pointage-label">TOTAL HEURE(S) TRAVAILLÉ</div><div class="total-box">${formatMinutes(calc.total)}</div></div></div>`;box.onclick=e=>e.stopPropagation();d.appendChild(box)}
+parent.appendChild(d)
+}
+function selectHeures(v,a,ci,chi,key){let h=`<select data-action="${a}-h" data-ci="${ci}" data-chi="${chi}" data-key="${esc(key)}">`;for(let i=0;i<=12;i++)h+=`<option value="${i}" ${Number(v)===i?"selected":""}>${i}</option>`;return h+`</select><div class="time-unit">heures</div>`}
+function selectMinutes(v,a,ci,chi,key){let h=`<select data-action="${a}-m" data-ci="${ci}" data-chi="${chi}" data-key="${esc(key)}">`;for(let i=0;i<60;i+=5)h+=`<option value="${i}" ${Number(v)===i?"selected":""}>${i}</option>`;return h+`</select><div class="time-unit">minutes</div>`}
+
+$("conducteurs").addEventListener("click",async e=>{
+const el=e.target.closest("[data-action]");if(!el)return;const a=el.dataset.action,ci=Number(el.dataset.ci),chi=Number(el.dataset.chi);
+if(a==="conducteur"){conducteurOuvert.has(ci)?conducteurOuvert.delete(ci):conducteurOuvert.add(ci);render();return}
+if(a==="chantier"){const k=`${ci}-${chi}`;chantierOuvert.has(k)?chantierOuvert.delete(k):chantierOuvert.add(k);render();return}
+if(a==="equipe"){const k=`${ci}-${chi}-${el.dataset.ei}`;equipeOuverte.has(k)?equipeOuverte.delete(k):equipeOuverte.add(k);render();return}
+if(a==="non-affectes"){const k=`${ci}-${chi}`;nonAffectesOuvert.has(k)?nonAffectesOuvert.delete(k):nonAffectesOuvert.add(k);render();return}
+e.stopPropagation();
+if(a==="edit-conducteur"){const c=data.conducteurs[ci],n=prompt("Nom du conducteur :",c.nom);if(n?.trim()){c.nom=n.trim();render();await sauvegarder();afficherMessage("✓ Conducteur modifié.")}}
+if(a==="add-chantier"){const n=prompt("Nom du chantier :");if(n?.trim()){data.conducteurs[ci].chantiers.push({id:Date.now(),nom:n.trim(),poseurs:[],equipes:[]});conducteurOuvert.add(ci);render();await sauvegarder();afficherMessage("✓ Chantier ajouté.")}}
+if(a==="edit-chantier"){const ch=data.conducteurs[ci].chantiers[chi],n=prompt("Nom du chantier :",ch.nom);if(n?.trim()){ch.nom=n.trim();render();await sauvegarder()}}
+if(a==="delete-chantier"){if(confirm("Supprimer ce chantier ?")){data.conducteurs[ci].chantiers.splice(chi,1);render();await sauvegarder();afficherMessage("✓ Chantier supprimé.")}}
+if(a==="manage-poseurs")ouvrirPoseurs(ci,chi);
+if(a==="add-team")ouvrirCreationEquipe(ci,chi);
+if(a==="edit-team")await modifierEquipe(ci,chi,Number(el.dataset.ei));
+if(a==="delete-team"){const ch=data.conducteurs[ci].chantiers[chi],ei=Number(el.dataset.ei);if(confirm("Supprimer cette équipe ? Les poseurs resteront dans le chantier.")){ch.equipes.splice(ei,1);render();await sauvegarder();afficherMessage("✓ Équipe supprimée.")}}
+});
+
+$("conducteurs").addEventListener("change",async e=>{
+const el=e.target.closest("[data-action]");if(!el)return;const ci=Number(el.dataset.ci),chi=Number(el.dataset.chi),p=data.conducteurs[ci].chantiers[chi].poseurs.find(x=>x.key===el.dataset.key);if(!p)return;
+if(el.dataset.action==="statut")p.statut=el.value;
+if(el.dataset.action==="retard-h")p.retardHeures=Number(el.value);
+if(el.dataset.action==="retard-m")p.retardMinutes=Number(el.value);
+if(el.dataset.action==="sup-h")p.supHeures=Number(el.value);
+if(el.dataset.action==="sup-m")p.supMinutes=Number(el.value);
+poseurOuvert.add(`${ci}-${chi}-${p.key}`);render();await sauvegarder()
+});
+
+function ouvrirPoseurs(ci,chi){conducteurActif=ci;chantierActif=chi;tempPoseurs=data.conducteurs[ci].chantiers[chi].poseurs.map(p=>p.key);$("poseurSearch").value="";$("poseurModal").classList.add("open");afficherListePoseurs()}
+function afficherListePoseurs(){const r=$("poseurSearch").value.toLowerCase(),box=$("poseurList");box.innerHTML="";globalPoseurs.filter(p=>p.actif!==false).forEach(p=>{const text=`${p.nom} ${p.prenom}`,key=`${p.nom}|${p.prenom}`;if(!text.toLowerCase().includes(r))return;box.innerHTML+=`<div class="person"><input type="checkbox" data-poseur-key="${esc(key)}" ${tempPoseurs.includes(key)?"checked":""}><label><b>${esc(p.nom)}</b> ${esc(p.prenom)}</label></div>`})}
+$("poseurSearch").addEventListener("input",afficherListePoseurs);
+$("poseurList").addEventListener("change",e=>{const k=e.target.dataset.poseurKey;if(!k)return;e.target.checked?(tempPoseurs.includes(k)||tempPoseurs.push(k)):tempPoseurs=tempPoseurs.filter(x=>x!==k)});
+$("cancelPoseurs").onclick=()=>$("poseurModal").classList.remove("open");
+$("savePoseurs").onclick=async()=>{const ch=data.conducteurs[conducteurActif].chantiers[chantierActif],old=ch.poseurs;ch.poseurs=tempPoseurs.map(k=>old.find(p=>p.key===k)||(()=>{const [nom,prenom]=k.split("|");return{key:k,nom,prenom,fonction:"",statut:"Présent",retardHeures:0,retardMinutes:0,supHeures:0,supMinutes:0}})());ch.equipes.forEach(e=>e.poseurs=e.poseurs.filter(k=>tempPoseurs.includes(k)));$("poseurModal").classList.remove("open");render();await sauvegarder();afficherMessage("✓ Poseurs enregistrés.")};
+
+function ouvrirCreationEquipe(ci,chi){conducteurActif=ci;chantierActif=chi;equipeTemp=[];const ch=data.conducteurs[ci].chantiers[chi],used=new Set(ch.equipes.flatMap(e=>e.poseurs)),avail=ch.poseurs.filter(p=>!used.has(p.key));if(!avail.length){alert("Tous les poseurs sont déjà attribués à une équipe.");return}$("teamName").value="Équipe "+(ch.equipes.length+1);$("teamFunction").value="";$("teamPoseurs").innerHTML="";avail.forEach(p=>$("teamPoseurs").innerHTML+=`<div class="person"><input type="checkbox" data-team-key="${esc(p.key)}"><label><b>${esc(p.nom)}</b> ${esc(p.prenom)}</label></div>`);$("teamModal").classList.add("open")}
+$("teamPoseurs").addEventListener("change",e=>{const k=e.target.dataset.teamKey;if(!k)return;e.target.checked?(equipeTemp.includes(k)||equipeTemp.push(k)):equipeTemp=equipeTemp.filter(x=>x!==k)});
+$("cancelTeam").onclick=()=>$("teamModal").classList.remove("open");
+$("saveTeam").onclick=async()=>{const ch=data.conducteurs[conducteurActif].chantiers[chantierActif],nom=$("teamName").value.trim(),fonction=$("teamFunction").value.trim();if(!nom||!fonction||!equipeTemp.length){alert("Indiquez le nom, la fonction et sélectionnez au moins un poseur.");return}ch.equipes.push({id:Date.now(),nom,fonction,poseurs:[...equipeTemp]});equipeTemp.forEach(k=>{const p=ch.poseurs.find(x=>x.key===k);if(p)p.fonction=fonction});$("teamModal").classList.remove("open");render();await sauvegarder();afficherMessage("✓ Équipe créée.")};
+async function modifierEquipe(ci,chi,ei){const e=data.conducteurs[ci].chantiers[chi].equipes[ei],n=prompt("Nom de l'équipe :",e.nom);if(n===null)return;const f=prompt("Fonction commune :",e.fonction);if(f===null)return;e.nom=n.trim()||e.nom;e.fonction=f.trim()||e.fonction;e.poseurs.forEach(k=>{const p=data.conducteurs[ci].chantiers[chi].poseurs.find(x=>x.key===k);if(p)p.fonction=e.fonction});render();await sauvegarder();afficherMessage("✓ Équipe modifiée.")}
+
+async function chargerDate(){data=chargerLocal()||structureDefaut();render();if(firebaseReady&&navigator.onLine)await chargerFirebase()}
+$("prev").onclick=async()=>{dateSel=changeDate(dateSel,-1);await chargerDate()};
+$("next").onclick=async()=>{dateSel=changeDate(dateSel,1);await chargerDate()};
+$("today").onclick=async()=>{dateSel=new Date().toISOString().slice(0,10);await chargerDate()};
+$("dateInput").onchange=async()=>{dateSel=$("dateInput").value;await chargerDate()};
+
+function resetPointagePoseur(p){return{key:p.key,nom:p.nom,prenom:p.prenom,fonction:p.fonction||"",statut:"Présent",retardHeures:0,retardMinutes:0,supHeures:0,supMinutes:0}}
+function copierStructure(source){return{date:dateSel,conducteurs:source.conducteurs.map(c=>({id:c.id,nom:c.nom,chantiers:c.chantiers.map(ch=>({id:ch.id,nom:ch.nom,poseurs:ch.poseurs.map(resetPointagePoseur),equipes:ch.equipes.map(e=>({id:e.id,nom:e.nom,fonction:e.fonction,poseurs:[...e.poseurs]}))}))}))}}
+function jourContientPointage(j){return j.conducteurs.some(c=>c.chantiers.some(ch=>ch.poseurs.some(p=>p.statut!=="Présent"||p.retardHeures>0||p.retardMinutes>0||p.supHeures>0||p.supMinutes>0)))}
+async function obtenirJourPrecedent(){const d=changeDate(dateSel,-1),l=localStorage.getItem("pointage_"+d);if(l)return normaliser(JSON.parse(l));if(firebaseReady&&navigator.onLine){try{const s=await getDoc(doc(db,"pointages",d));if(s.exists())return normaliser(s.data())}catch(e){}}return null}
+$("copyPrevious").onclick=async()=>{const source=await obtenirJourPrecedent();if(!source){alert("Aucune organisation trouvée pour le jour précédent.");return}if(jourContientPointage(data)&&!confirm("Ce jour contient déjà du pointage. Remplacer l'organisation ?"))return;data=copierStructure(source);sauvegarderLocal();render();await sauvegarderFirebase();afficherMessage("✓ Organisation du jour précédent copiée, pointage remis à zéro.")};
+
+function afficherPage(p){["Pointage","Poseur","Chantier","ListePoseurs","ListeConducteurs"].forEach(x=>$("page"+x).style.display=(p===x.toLowerCase()||p===x?"block":"none"));$("pagePointage").style.display=p==="pointage"?"block":"none";$("pagePoseur").style.display=p==="poseur"?"block":"none";$("pageChantier").style.display=p==="chantier"?"block":"none";$("pageListePoseurs").style.display=p==="listePoseurs"?"block":"none";$("pageListeConducteurs").style.display=p==="listeConducteurs"?"block":"none";$("navPointage").classList.toggle("active",p==="pointage");$("navPoseur").classList.toggle("active",p==="poseur");$("navChantier").classList.toggle("active",p==="chantier");$("navListePoseurs").classList.toggle("active",p==="listePoseurs");$("navListeConducteurs").classList.toggle("active",p==="listeConducteurs")}
+$("navPointage").onclick=()=>afficherPage("pointage");
+$("navPoseur").onclick=async()=>{afficherPage("poseur");await chargerHistorique();remplirPoseurs()};
+$("navChantier").onclick=async()=>{afficherPage("chantier");await chargerHistorique();remplirChantiers()};
+$("navListePoseurs").onclick=async()=>{afficherPage("listePoseurs");if(!globalPoseurs.length&&firebaseReady)await chargerPoseursGeneraux();afficherPoseursGeneraux()};
+$("navListeConducteurs").onclick=async()=>{afficherPage("listeConducteurs");if(!globalConducteurs.length&&firebaseReady)await chargerConducteursGeneraux();afficherConducteursGeneraux()};
+
+function afficherPoseursGeneraux(){const c=$("globalPoseurList");c.innerHTML="";globalPoseurs.forEach((p,i)=>{const photo=p.photo?`<img class="person-photo" src="${esc(p.photo)}">`:`<div class="person-photo-placeholder">👤</div>`;c.innerHTML+=`<div class="poseur-admin"><div class="person-admin-left">${photo}<div><div class="poseur-admin-name">${esc(p.nom)} ${esc(p.prenom)}</div><small>${p.actif===false?"Désactivé":"Actif"}</small></div></div><div class="person-admin-actions"><button class="btn purple" data-edit="${i}">✏️ Modifier</button><button class="btn gray" data-photo="${i}">📷 Photo</button>${p.photo?`<button class="btn orange" data-rphoto="${i}">🗑️ Photo</button>`:""}${p.actif===false?`<button class="btn green" data-react="${i}">Réactiver</button>`:`<button class="btn red" data-disable="${i}">Désactiver</button>`}</div></div>`})}
+$("addGlobalPoseur").onclick=async()=>{const nom=$("newPoseurNom").value.trim().toUpperCase(),prenom=$("newPoseurPrenom").value.trim();if(!nom||!prenom)return alert("Indiquez le nom et le prénom.");if(globalPoseurs.some(p=>p.nom.toLowerCase()===nom.toLowerCase()&&p.prenom.toLowerCase()===prenom.toLowerCase()))return alert("Ce poseur existe déjà.");globalPoseurs.push({nom,prenom,photo:"",actif:true});$("newPoseurNom").value="";$("newPoseurPrenom").value="";afficherPoseursGeneraux();await sauvegarderPoseursGeneraux();afficherMessage("✓ Poseur ajouté.")};
+$("globalPoseurList").addEventListener("click",async e=>{const i=Number(Object.values(e.target.dataset)[0]);if(e.target.dataset.edit!==undefined){const p=globalPoseurs[i],n=prompt("Nom :",p.nom),pr=prompt("Prénom :",p.prenom);if(n===null||pr===null)return;const old=`${p.nom}|${p.prenom}`;p.nom=n.trim().toUpperCase();p.prenom=pr.trim();const neu=`${p.nom}|${p.prenom}`;data.conducteurs.forEach(c=>c.chantiers.forEach(ch=>{ch.poseurs.forEach(x=>{if(x.key===old){x.key=neu;x.nom=p.nom;x.prenom=p.prenom}});ch.equipes.forEach(x=>x.poseurs=x.poseurs.map(k=>k===old?neu:k))}));afficherPoseursGeneraux();await sauvegarderPoseursGeneraux();await sauvegarder();return}if(e.target.dataset.photo!==undefined){$("poseurPhotoInput").dataset.index=i;$("poseurPhotoInput").click();return}if(e.target.dataset.rphoto!==undefined){globalPoseurs[i].photo="";afficherPoseursGeneraux();await sauvegarderPoseursGeneraux();return}if(e.target.dataset.disable!==undefined){globalPoseurs[i].actif=false;afficherPoseursGeneraux();await sauvegarderPoseursGeneraux();return}if(e.target.dataset.react!==undefined){globalPoseurs[i].actif=true;afficherPoseursGeneraux();await sauvegarderPoseursGeneraux()}})
+$("poseurPhotoInput").onchange=async e=>{const f=e.target.files?.[0],i=Number(e.target.dataset.index);if(!f||!globalPoseurs[i])return;globalPoseurs[i].photo=await imageToBase64(f);afficherPoseursGeneraux();await sauvegarderPoseursGeneraux()};
+
+function afficherConducteursGeneraux(){const c=$("globalConducteurList");c.innerHTML="";globalConducteurs.forEach((p,i)=>{const photo=p.photo?`<img class="person-photo" src="${esc(p.photo)}">`:`<div class="person-photo-placeholder">🚚</div>`;c.innerHTML+=`<div class="poseur-admin"><div class="person-admin-left">${photo}<div><div class="poseur-admin-name">${esc(p.nom)} ${esc(p.prenom)}</div><small>${p.actif===false?"Désactivé":"Actif"}</small></div></div><div class="person-admin-actions"><button class="btn purple" data-edit="${i}">✏️ Modifier</button><button class="btn gray" data-photo="${i}">📷 Photo</button>${p.photo?`<button class="btn orange" data-rphoto="${i}">🗑️ Photo</button>`:""}${p.actif===false?`<button class="btn green" data-react="${i}">Réactiver</button>`:`<button class="btn red" data-disable="${i}">Désactiver</button>`}</div></div>`})}
+$("addGlobalConducteur").onclick=async()=>{const nom=$("newConducteurNom").value.trim().toUpperCase(),prenom=$("newConducteurPrenom").value.trim();if(!nom||!prenom)return alert("Indiquez le nom et le prénom.");globalConducteurs.push({id:"c"+Date.now(),nom,prenom,photo:"",actif:true});$("newConducteurNom").value="";$("newConducteurPrenom").value="";afficherConducteursGeneraux();await sauvegarderConducteursGeneraux();afficherMessage("✓ Conducteur ajouté.")};
+$("globalConducteurList").addEventListener("click",async e=>{const d=e.target.dataset,i=Number(d.edit??d.photo??d.rphoto??d.disable??d.react);if(d.edit!==undefined){const c=globalConducteurs[i],n=prompt("Nom :",c.nom),p=prompt("Prénom :",c.prenom);if(n!==null)c.nom=n.trim().toUpperCase();if(p!==null)c.prenom=p.trim();afficherConducteursGeneraux();await sauvegarderConducteursGeneraux()}else if(d.photo!==undefined){$("conducteurPhotoInput").dataset.index=i;$("conducteurPhotoInput").click()}else if(d.rphoto!==undefined){globalConducteurs[i].photo="";afficherConducteursGeneraux();await sauvegarderConducteursGeneraux()}else if(d.disable!==undefined){globalConducteurs[i].actif=false;afficherConducteursGeneraux();await sauvegarderConducteursGeneraux()}else if(d.react!==undefined){globalConducteurs[i].actif=true;afficherConducteursGeneraux();await sauvegarderConducteursGeneraux()}});
+$("conducteurPhotoInput").onchange=async e=>{const f=e.target.files?.[0],i=Number(e.target.dataset.index);if(!f||!globalConducteurs[i])return;globalConducteurs[i].photo=await imageToBase64(f);afficherConducteursGeneraux();await sauvegarderConducteursGeneraux()};
+
+async function chargerHistorique(){historique=[];if(!firebaseReady||!navigator.onLine){return}try{const s=await getDocs(collection(db,"pointages"));s.forEach(x=>{const j=normaliser(x.data());j.conducteurs.forEach(c=>c.chantiers.forEach(ch=>ch.poseurs.forEach(p=>historique.push({date:j.date||x.id,nom:p.nom,prenom:p.prenom,fonction:p.fonction||"",conducteur:c.nom,chantier:ch.nom,statut:p.statut||"Présent",retardHeures:Number(p.retardHeures)||0,retardMinutes:Number(p.retardMinutes)||0,supHeures:Number(p.supHeures)||0,supMinutes:Number(p.supMinutes)||0}))))})}catch(e){console.error(e)}}
+function remplirPoseurs(){$("poseurSelect").innerHTML='<option value="">-- Sélectionner un poseur --</option>';globalPoseurs.filter(p=>p.actif!==false).forEach(p=>$("poseurSelect").innerHTML+=`<option value="${esc(p.nom+"|"+p.prenom)}">${esc(p.nom)} ${esc(p.prenom)}</option>`)}
+function remplirChantiers(){const vals=[...new Set(historique.map(x=>`${x.chantier}||${x.conducteur}`))].sort();$("chantierSelect").innerHTML='<option value="">-- Sélectionner un chantier --</option>';vals.forEach(v=>{const [c,d]=v.split("||");$("chantierSelect").innerHTML+=`<option value="${esc(v)}">${esc(c)} — ${esc(d)}</option>`})}
+function construireTableau(lignes){if(!lignes.length)return"<p>Aucun pointage enregistré.</p>";let n=0,r=0,s=0,t=0;lignes.forEach(l=>{const c=calculPoseur(l,l.date);n+=c.normales;r+=c.retard;s+=c.sup;t+=c.total});let h=`<div class="history-summary"><div class="summary-box summary-normal"><div class="summary-label">HEURES NORMALES</div><div class="summary-value">${formatMinutes(n)}</div></div><div class="summary-box summary-retard"><div class="summary-label">RETARD</div><div class="summary-value">${formatMinutes(r)}</div></div><div class="summary-box summary-sup"><div class="summary-label">HEURES SUPPLÉMENTAIRES</div><div class="summary-value">${formatMinutes(s)}</div></div><div class="summary-box summary-total"><div class="summary-label">TOTAL TRAVAILLÉ</div><div class="summary-value">${formatMinutes(t)}</div></div></div><div class="scroll"><table><thead><tr><th>Date</th><th>Poseur</th><th>Conducteur</th><th>Chantier</th><th>Fonction</th><th>Présence</th><th>Normales</th><th>Retard</th><th>Supplémentaires</th><th>Total</th></tr></thead><tbody>`;lignes.sort((a,b)=>b.date.localeCompare(a.date)).forEach(l=>{const c=calculPoseur(l,l.date);h+=`<tr><td>${l.date.split("-").reverse().join("/")}</td><td><b>${esc(l.nom)}</b> ${esc(l.prenom)}</td><td>${esc(l.conducteur)}</td><td>${esc(l.chantier)}</td><td>${esc(l.fonction)}</td><td>${esc(l.statut)}</td><td>${formatMinutes(c.normales)}</td><td>${formatMinutes(c.retard)}</td><td>${formatMinutes(c.sup)}</td><td>${formatMinutes(c.total)}</td></tr>`});return h+"</tbody></table></div>"}
+$("poseurSelect").onchange=()=>{const k=$("poseurSelect").value;if(!k)return $("poseurHistory").innerHTML="";const[n,p]=k.split("|");$("poseurHistory").innerHTML=construireTableau(historique.filter(x=>x.nom===n&&x.prenom===p))}
+$("chantierSelect").onchange=()=>{const v=$("chantierSelect").value;if(!v)return $("chantierHistory").innerHTML="";const[c,d]=v.split("||");$("chantierHistory").innerHTML=construireTableau(historique.filter(x=>x.chantier===c&&x.conducteur===d))}
+function exporterExcel(lignes,nom){if(!lignes.length)return alert("Aucune donnée à exporter.");if(typeof XLSX==="undefined")return alert("La bibliothèque Excel n'est pas encore disponible. Ouvrez l'application une fois avec Internet.");const ws=XLSX.utils.json_to_sheet(lignes.map(l=>{const c=calculPoseur(l,l.date);return{Date:l.date,Poseur:`${l.nom} ${l.prenom}`,Conducteur:l.conducteur,Chantier:l.chantier,Fonction:l.fonction,Présence:l.statut,"Heures normales":c.normales/60,"Heures de retard":c.retard/60,"Heures supplémentaires":c.sup/60,"Total heure(s) travaillé":c.total/60}}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Pointage");XLSX.writeFile(wb,`HISTORIQUE_${nom}.xlsx`)}
+$("exportPoseur").onclick=()=>{const k=$("poseurSelect").value;if(!k)return alert("Sélectionnez un poseur.");const[n,p]=k.split("|");exporterExcel(historique.filter(x=>x.nom===n&&x.prenom===p),`${n}_${p}`)}
+$("exportChantier").onclick=()=>{const v=$("chantierSelect").value;if(!v)return alert("Sélectionnez un chantier.");const[c,d]=v.split("||");exporterExcel(historique.filter(x=>x.chantier===c&&x.conducteur===d),`CHANTIER_${c}`)}
+$("exportAll").onclick=()=>exporterExcel(historique,"COMPLET");
+</script>
+
+<script>
+if("serviceWorker" in navigator){
+window.addEventListener("load",async()=>{
+try{await navigator.serviceWorker.register("./sw.js");console.log("PACIFIC-ALU : Service Worker actif")}
+catch(e){console.error("Service Worker :",e)}
+});
+}
+</script>
+</body>
+</html>

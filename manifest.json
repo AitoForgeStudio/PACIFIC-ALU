@@ -1,0 +1,12 @@
+{
+  "name":"PACIFIC-ALU",
+  "short_name":"PACIFIC-ALU",
+  "description":"Pointage des poseurs et conducteurs PACIFIC-ALU",
+  "start_url":"./index.html",
+  "scope":"./",
+  "display":"standalone",
+  "orientation":"portrait",
+  "background_color":"#eef2f7",
+  "theme_color":"#5b3b91",
+  "lang":"fr"
+}
