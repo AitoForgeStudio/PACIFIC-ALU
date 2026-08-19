@@ -903,6 +903,8 @@ await chargerPoseursGeneraux();await chargerConducteursGeneraux();await chargerF
 signInAnonymously(auth).catch(e=>{console.warn("Auth hors ligne ou indisponible",e);updateStatus()});
 
 data=chargerLocal()||structureDefaut();$("dateInput").value=dateSel;render();updateStatus();
+window.pacificNavigate("pointage");
+document.querySelector('.dashboard-menu [data-side="Pointage"]')?.classList.add("active");
 
 function afficherMessage(t,erreur=false){const e=$("message");e.textContent=t;e.className="message show";e.style.background=erreur?"#fee2e2":"#dcfce7";e.style.color=erreur?"#991b1b":"#166534";setTimeout(()=>e.className="message",3000)}
 
@@ -1042,8 +1044,15 @@ window.pacificNavigate=function(page){
   naviguerDepuisSidebar(page);
 };
 
-// Initial page: Pointage
-naviguerDepuisSidebar("pointage");
+document.querySelectorAll(".dashboard-menu button[data-side]").forEach(btn=>{
+  btn.addEventListener("click",()=>window.pacificNavigate({
+    Pointage:"pointage",
+    Poseur:"poseur",
+    Chantier:"chantier",
+    ListePoseurs:"listePoseurs",
+    ListeConducteurs:"listeConducteurs"
+  }[btn.dataset.side]));
+});
 
 function afficherPoseursGeneraux(){
 const c=$("globalPoseurList");
