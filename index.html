@@ -903,8 +903,6 @@ await chargerPoseursGeneraux();await chargerConducteursGeneraux();await chargerF
 signInAnonymously(auth).catch(e=>{console.warn("Auth hors ligne ou indisponible",e);updateStatus()});
 
 data=chargerLocal()||structureDefaut();$("dateInput").value=dateSel;render();updateStatus();
-window.pacificNavigate("pointage");
-document.querySelector('.dashboard-menu [data-side="Pointage"]')?.classList.add("active");
 
 function afficherMessage(t,erreur=false){const e=$("message");e.textContent=t;e.className="message show";e.style.background=erreur?"#fee2e2":"#dcfce7";e.style.color=erreur?"#991b1b":"#166534";setTimeout(()=>e.className="message",3000)}
 
@@ -990,36 +988,34 @@ async function obtenirJourPrecedent(){const d=changeDate(dateSel,-1),l=localStor
 $("copyPrevious").onclick=async()=>{const source=await obtenirJourPrecedent();if(!source){alert("Aucune organisation trouvée pour le jour précédent.");return}if(jourContientPointage(data)&&!confirm("Ce jour contient déjà du pointage. Remplacer l'organisation ?"))return;data=copierStructure(source);sauvegarderLocal();render();await sauvegarderFirebase();afficherMessage("✓ Organisation du jour précédent copiée, pointage remis à zéro.")};
 
 function afficherPage(p){
-  const pages = {
-    pointage: "pagePointage",
-    poseur: "pagePoseur",
-    chantier: "pageChantier",
-    listePoseurs: "pageListePoseurs",
-    listeConducteurs: "pageListeConducteurs"
+  const pages={
+    pointage:"pagePointage",
+    poseur:"pagePoseur",
+    chantier:"pageChantier",
+    listePoseurs:"pageListePoseurs",
+    listeConducteurs:"pageListeConducteurs"
   };
 
-  Object.entries(pages).forEach(([key,id])=>{
-    const el=$(id);
-    if(el) el.style.display = key===p ? "block" : "none";
+  Object.keys(pages).forEach(k=>{
+    const el=$(pages[k]);
+    if(el) el.style.display=(k===p)?"block":"none";
   });
+}
 
-  const activeSide = {
+async function naviguerDepuisSidebar(page){
+  afficherPage(page);
+
+  const labels={
     pointage:"Pointage",
     poseur:"Poseur",
     chantier:"Chantier",
     listePoseurs:"ListePoseurs",
     listeConducteurs:"ListeConducteurs"
-  }[p];
+  };
 
   document.querySelectorAll(".dashboard-menu button[data-side]").forEach(btn=>{
-    btn.classList.toggle("active", btn.dataset.side===activeSide);
+    btn.classList.toggle("active",btn.dataset.side===labels[page]);
   });
-}
-
-async function naviguerDepuisSidebar(page){
-  if(!page) return;
-
-  afficherPage(page);
 
   try{
     if(page==="poseur"){
@@ -1029,46 +1025,25 @@ async function naviguerDepuisSidebar(page){
       await chargerHistorique();
       remplirChantiers();
     }else if(page==="listePoseurs"){
-      if(!globalPoseurs.length && firebaseReady){
-        await chargerPoseursGeneraux();
-      }
+      if(!globalPoseurs.length && firebaseReady) await chargerPoseursGeneraux();
       afficherPoseursGeneraux();
     }else if(page==="listeConducteurs"){
-      if(!globalConducteurs.length && firebaseReady){
-        await chargerConducteursGeneraux();
-      }
+      if(!globalConducteurs.length && firebaseReady) await chargerConducteursGeneraux();
       afficherConducteursGeneraux();
     }
   }catch(err){
     console.error("Navigation PACIFIC-ALU :",err);
-    afficherMessage("⚠️ Erreur lors du chargement de la page.",true);
+    afficherMessage("⚠️ Impossible de charger cette page.",true);
   }
 }
 
-/* Une seule liaison entre la barre latérale et les pages. */
-window.pacificNavigate = function(page){
+/* Les boutons de la barre latérale utilisent cette fonction directement. */
+window.pacificNavigate=function(page){
   naviguerDepuisSidebar(page);
 };
 
-const sidebarPages = {
-  Pointage:"pointage",
-  Poseur:"poseur",
-  Chantier:"chantier",
-  ListePoseurs:"listePoseurs",
-  ListeConducteurs:"listeConducteurs"
-};
-
-document.querySelectorAll(".dashboard-menu button[data-side]").forEach(btn=>{
-  btn.onclick = function(ev){
-    ev.preventDefault();
-    ev.stopPropagation();
-    const page = sidebarPages[this.dataset.side];
-    if(page) window.pacificNavigate(page);
-  };
-});
-
-/* Page affichée au démarrage. */
-afficherPage("pointage");
+// Initial page: Pointage
+naviguerDepuisSidebar("pointage");
 
 function afficherPoseursGeneraux(){
 const c=$("globalPoseurList");
