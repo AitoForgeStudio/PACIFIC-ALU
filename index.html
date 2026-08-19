@@ -688,6 +688,20 @@ main,.main-content,.content,.page-content{
   background:#ffffff24;
   box-shadow:inset 3px 0 0 #fff;
 }
+
+/* Navigation latérale : zone de clic pleine et priorité visuelle */
+.dashboard-sidebar{z-index:5000!important}
+.dashboard-menu{position:relative;z-index:5001}
+.dashboard-menu button{
+  position:relative;
+  z-index:5002;
+  pointer-events:auto!important;
+  user-select:none;
+}
+.dashboard-menu button.active{
+  background:#ffffff2b!important;
+  box-shadow:inset 4px 0 0 #fff,0 2px 8px #00000018!important;
+}
 </style>
 </head>
 
@@ -698,11 +712,11 @@ main,.main-content,.content,.page-content{
     <strong>PACIFIC<br>ALU</strong>
   </div>
   <div class="dashboard-menu">
-    <button data-side="Pointage"><span>📅</span><span>Pointage</span></button>
-    <button data-side="Poseur"><span>📊</span><span>Historique</span></button>
-    <button data-side="Chantier"><span>🏗️</span><span>Chantiers</span></button>
-    <button data-side="ListePoseurs"><span>👷</span><span>Poseurs</span></button>
-    <button data-side="ListeConducteurs"><span>🚚</span><span>Conducteurs</span></button>
+    <button id="side-pointage" data-side="Pointage" type="button" onclick="window.pacificNavigate('pointage')"><span>📅</span><span>Pointage</span></button>
+    <button id="side-poseur" data-side="Poseur" type="button" onclick="window.pacificNavigate('poseur')"><span>📊</span><span>Historique</span></button>
+    <button id="side-chantier" data-side="Chantier" type="button" onclick="window.pacificNavigate('chantier')"><span>🏗️</span><span>Chantiers</span></button>
+    <button id="side-listePoseurs" data-side="ListePoseurs" type="button" onclick="window.pacificNavigate('listePoseurs')"><span>👷</span><span>Poseurs</span></button>
+    <button id="side-listeConducteurs" data-side="ListeConducteurs" type="button" onclick="window.pacificNavigate('listeConducteurs')"><span>🚚</span><span>Conducteurs</span></button>
     <div class="side-separator"></div>
   </div>
   <div class="dashboard-bottom">
@@ -713,13 +727,7 @@ main,.main-content,.content,.page-content{
 <div class="container">
 
 
-<div class="nav">
 
-
-
-
-
-</div>
 
 <div id="firebaseStatus" class="status">⚡ Initialisation...</div>
 <div id="message" class="message"></div>
@@ -895,7 +903,6 @@ await chargerPoseursGeneraux();await chargerConducteursGeneraux();await chargerF
 signInAnonymously(auth).catch(e=>{console.warn("Auth hors ligne ou indisponible",e);updateStatus()});
 
 data=chargerLocal()||structureDefaut();$("dateInput").value=dateSel;render();updateStatus();
-document.querySelector('.dashboard-menu [data-side="Pointage"]')?.classList.add("active");
 
 function afficherMessage(t,erreur=false){const e=$("message");e.textContent=t;e.className="message show";e.style.background=erreur?"#fee2e2":"#dcfce7";e.style.color=erreur?"#991b1b":"#166534";setTimeout(()=>e.className="message",3000)}
 
@@ -981,54 +988,62 @@ async function obtenirJourPrecedent(){const d=changeDate(dateSel,-1),l=localStor
 $("copyPrevious").onclick=async()=>{const source=await obtenirJourPrecedent();if(!source){alert("Aucune organisation trouvée pour le jour précédent.");return}if(jourContientPointage(data)&&!confirm("Ce jour contient déjà du pointage. Remplacer l'organisation ?"))return;data=copierStructure(source);sauvegarderLocal();render();await sauvegarderFirebase();afficherMessage("✓ Organisation du jour précédent copiée, pointage remis à zéro.")};
 
 function afficherPage(p){
-  $("pagePointage").style.display=p==="pointage"?"block":"none";
-  $("pagePoseur").style.display=p==="poseur"?"block":"none";
-  $("pageChantier").style.display=p==="chantier"?"block":"none";
-  $("pageListePoseurs").style.display=p==="listePoseurs"?"block":"none";
-  $("pageListeConducteurs").style.display=p==="listeConducteurs"?"block":"none";
+  const pages={
+    pointage:"pagePointage",
+    poseur:"pagePoseur",
+    chantier:"pageChantier",
+    listePoseurs:"pageListePoseurs",
+    listeConducteurs:"pageListeConducteurs"
+  };
+
+  Object.keys(pages).forEach(k=>{
+    const el=$(pages[k]);
+    if(el) el.style.display=(k===p)?"block":"none";
+  });
 }
+
 async function naviguerDepuisSidebar(page){
   afficherPage(page);
 
-  document.querySelectorAll(".dashboard-menu [data-side]").forEach(btn=>{
-    btn.classList.toggle("active", btn.dataset.side===({
-      pointage:"Pointage",
-      poseur:"Poseur",
-      chantier:"Chantier",
-      listePoseurs:"ListePoseurs",
-      listeConducteurs:"ListeConducteurs"
-    }[page] || ""));
+  const labels={
+    pointage:"Pointage",
+    poseur:"Poseur",
+    chantier:"Chantier",
+    listePoseurs:"ListePoseurs",
+    listeConducteurs:"ListeConducteurs"
+  };
+
+  document.querySelectorAll(".dashboard-menu button[data-side]").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.side===labels[page]);
   });
 
-  if(page==="poseur"){
-    await chargerHistorique();
-    remplirPoseurs();
-  }
-  if(page==="chantier"){
-    await chargerHistorique();
-    remplirChantiers();
-  }
-  if(page==="listePoseurs"){
-    if(!globalPoseurs.length&&firebaseReady) await chargerPoseursGeneraux();
-    afficherPoseursGeneraux();
-  }
-  if(page==="listeConducteurs"){
-    if(!globalConducteurs.length&&firebaseReady) await chargerConducteursGeneraux();
-    afficherConducteursGeneraux();
+  try{
+    if(page==="poseur"){
+      await chargerHistorique();
+      remplirPoseurs();
+    }else if(page==="chantier"){
+      await chargerHistorique();
+      remplirChantiers();
+    }else if(page==="listePoseurs"){
+      if(!globalPoseurs.length && firebaseReady) await chargerPoseursGeneraux();
+      afficherPoseursGeneraux();
+    }else if(page==="listeConducteurs"){
+      if(!globalConducteurs.length && firebaseReady) await chargerConducteursGeneraux();
+      afficherConducteursGeneraux();
+    }
+  }catch(err){
+    console.error("Navigation PACIFIC-ALU :",err);
+    afficherMessage("⚠️ Impossible de charger cette page.",true);
   }
 }
 
-document.querySelectorAll(".dashboard-menu [data-side]").forEach(btn=>{
-  btn.addEventListener("click", async ()=>{
-    await naviguerDepuisSidebar({
-      Pointage:"pointage",
-      Poseur:"poseur",
-      Chantier:"chantier",
-      ListePoseurs:"listePoseurs",
-      ListeConducteurs:"listeConducteurs"
-    }[btn.dataset.side]);
-  });
-});
+/* Les boutons de la barre latérale utilisent cette fonction directement. */
+window.pacificNavigate=function(page){
+  naviguerDepuisSidebar(page);
+};
+
+// Initial page: Pointage
+naviguerDepuisSidebar("pointage");
 
 function afficherPoseursGeneraux(){
 const c=$("globalPoseurList");
